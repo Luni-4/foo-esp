@@ -91,7 +91,13 @@ where
 {
     info!("About to run an mDNS responder for our PC. It will be addressable using {our_name}.local, so try to `ping {our_name}.local`.");
 
-    let mut socket = io::bind(stack, DEFAULT_SOCKET, Some(Ipv4Addr::UNSPECIFIED), Some(0)).await?;
+    // Do not pretend that you have ipv6 up and running.
+    // To have it running, you have to get at least a link-local ipv6 addr first, using an `esp-idf-sys` API call
+    // once the wifi is up and running (`esp_idf_svc::sys::esp_netif_create_ip6_linklocal`).
+    // Moreover, you can't just pass "0" for the interface. You need to pass wifi.sta_netif().index()
+    // "0" does work on PCs (sometimes!), but not with ESP-IDF - it is very picky about having a correct ipv6-capable
+    // interface rather than just "all" (= 0)
+    let mut socket = io::bind(stack, DEFAULT_SOCKET, Some(Ipv4Addr::UNSPECIFIED), None).await?;
 
     let (recv, send) = socket.split();
 
@@ -108,7 +114,9 @@ where
 
     let mdns = io::Mdns::<NoopRawMutex, _, _, _, _>::new(
         Some(Ipv4Addr::UNSPECIFIED),
-        Some(0),
+        // Ditto:
+        // Do not pretend that you have ipv6 up and running.
+        None,
         recv,
         send,
         recv_buf,
