@@ -91,12 +91,15 @@ where
 {
     info!("About to run an mDNS responder for our PC. It will be addressable using {our_name}.local, so try to `ping {our_name}.local`.");
 
-    // Do not pretend that you have ipv6 up and running.
-    // To have it running, you have to get at least a link-local ipv6 addr first, using an `esp-idf-sys` API call
-    // once the wifi is up and running (`esp_idf_svc::sys::esp_netif_create_ip6_linklocal`).
-    // Moreover, you can't just pass "0" for the interface. You need to pass wifi.sta_netif().index()
-    // "0" does work on PCs (sometimes!), but not with ESP-IDF - it is very picky about having a correct ipv6-capable
-    // interface rather than just "all" (= 0)
+    // No ipv6 up and running.
+    // To have it running, we need to get at least a link-local ipv6 addr
+    // first, using an `esp-idf-sys` API call once the wifi is up and running:
+    // `esp_idf_svc::sys::esp_netif_create_ip6_linklocal`.
+    // Moreover, we can't just pass "0" for the interface.
+    // We need to pass `wifi.sta_netif().index()`
+    // Sometimes, "0" does work on PCs, but not with ESP-IDF.
+    // This API is very picky about having a correct ipv6-capable
+    // interface rather than just "all" (= 0).
     let mut socket = io::bind(stack, DEFAULT_SOCKET, Some(Ipv4Addr::UNSPECIFIED), None).await?;
 
     let (recv, send) = socket.split();
@@ -109,13 +112,12 @@ where
     };
 
     // A way to notify the mDNS responder that the data in `Host` had changed
-    // We don't use it in this example, because the data is hard-coded
+    // Not necessary for this example, because the data is hard-coded
     let signal = Signal::new();
 
     let mdns = io::Mdns::<NoopRawMutex, _, _, _, _>::new(
         Some(Ipv4Addr::UNSPECIFIED),
-        // Ditto:
-        // Do not pretend that you have ipv6 up and running.
+        // No ipv6 up and running.
         None,
         recv,
         send,
