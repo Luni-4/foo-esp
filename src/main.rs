@@ -2,6 +2,7 @@ use core::net::{Ipv4Addr, Ipv6Addr};
 
 use edge_mdns::buf::{BufferAccess, VecBufAccess};
 use edge_mdns::domain::base::Ttl;
+use edge_mdns::host::{Service, ServiceAnswers};
 use edge_mdns::io::{self, MdnsIoError, DEFAULT_SOCKET};
 use edge_mdns::{host::Host, HostAnswersMdnsHandler};
 use edge_nal::{UdpBind, UdpSplit};
@@ -11,11 +12,9 @@ use embassy_sync::signal::Signal;
 
 use log::info;
 
-use rand::{thread_rng, RngCore};
+use anyhow::{anyhow, bail};
 
-use anyhow::bail;
-
-use embedded_svc::wifi::{AuthMethod, ClientConfiguration, Configuration};
+use esp_idf_svc::wifi::{AuthMethod, ClientConfiguration, Configuration};
 
 use esp_idf_svc::hal::prelude::Peripherals;
 use esp_idf_svc::hal::task::block_on;
@@ -25,6 +24,8 @@ use esp_idf_svc::wifi::{AsyncWifi, EspWifi};
 use esp_idf_svc::{eventloop::EspSystemEventLoop, nvs::EspDefaultNvsPartition};
 
 const OUR_NAME: &str = "mypc";
+
+const SERVICE_NAME: &str = "my-service";
 
 #[toml_cfg::toml_config]
 pub struct WifiConfig {
@@ -40,7 +41,7 @@ fn main() -> anyhow::Result<()> {
 
     // `async-io` uses the ESP IDF `eventfd` syscall to implement async IO.
     // If you use `tokio`, you still have to do the same as it also uses the `eventfd` syscall
-    esp_idf_svc::io::vfs::initialize_eventfd(5).unwrap();
+    let _event = esp_idf_svc::io::vfs::MountedEventfs::mount(5)?;
 
     let peripherals = Peripherals::take()?;
     let sys_loop = EspSystemEventLoop::take()?;
@@ -69,7 +70,7 @@ fn main() -> anyhow::Result<()> {
     block_on(run::<edge_nal_std::Stack, _, _>(
         &stack, &recv_buf, &send_buf, OUR_NAME, ip_info.ip,
     ))
-    .unwrap();
+    .map_err(|e| anyhow!("Error running mdns-sd: {e}"))?;
 
     loop {
         // Sleep for one second and then continue the execution.
@@ -111,6 +112,17 @@ where
         ttl: Ttl::from_secs(60),
     };
 
+    let service = Service {
+        name: SERVICE_NAME,
+        priority: 1,
+        weight: 5,
+        service: "_https",
+        protocol: "_tcp",
+        port: 443,
+        service_subtypes: &[],
+        txt_kvs: &[],
+    };
+
     // A way to notify the mDNS responder that the data in `Host` had changed
     // Not necessary for this example, because the data is hard-coded
     let signal = Signal::new();
@@ -123,11 +135,14 @@ where
         send,
         recv_buf,
         send_buf,
-        |buf| thread_rng().fill_bytes(buf),
+        |_buf| {},
         &signal,
     );
 
-    mdns.run(HostAnswersMdnsHandler::new(&host)).await
+    mdns.run(HostAnswersMdnsHandler::new(ServiceAnswers::new(
+        &host, &service,
+    )))
+    .await
 }
 
 async fn connect_wifi(wifi: &mut AsyncWifi<EspWifi<'static>>) -> anyhow::Result<()> {

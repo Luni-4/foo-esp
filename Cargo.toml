@@ -5,23 +5,23 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
+
 # Esp
-embedded-svc = "0.28"
-esp-idf-svc = "0.49"
+esp-idf-svc = { git = "https://github.com/esp-rs/esp-idf-svc" }
 
 # Mdns-sd
 edge-mdns = "0.3"
-edge-nal = "0.3"
-edge-nal-std = "0.3"
-embassy-sync = "0.6"
-embassy-time= {version = "0.3", features = ["std", "generic-queue-8"] }
-futures-lite = "2.3.0"
-log = "0.4"
-env_logger = "0.10"
-rand = "0.8.5"
+edge-nal = { version = "0.3", default-features = false }
+edge-nal-std = { version = "0.3", default-features = false }
+embassy-sync = { version = "0.6", default-features = false }
+embassy-time = { version = "0.3.2", features = ["std", "generic-queue-8"] }
 
 # Error
 anyhow = "1"
+
+# Log
+log = "0.4"
+env_logger = "0.10"
 
 # Config
 toml-cfg = "0.2.0"
