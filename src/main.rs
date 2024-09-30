@@ -70,12 +70,7 @@ fn main() -> anyhow::Result<()> {
     block_on(run::<edge_nal_std::Stack, _, _>(
         &stack, &recv_buf, &send_buf, OUR_NAME, ip_info.ip,
     ))
-    .map_err(|e| anyhow!("Error running mdns-sd: {e}"))?;
-
-    loop {
-        // Sleep for one second and then continue the execution.
-        std::thread::sleep(std::time::Duration::from_millis(1000));
-    }
+    .map_err(|e| anyhow!("Error running mdns-sd: {e}"))
 }
 
 async fn run<T, RB, SB>(
