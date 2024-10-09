@@ -34,6 +34,7 @@ toml-cfg = "0.2.0"
 # Rust debug is too slow.
 # For debug builds always builds with some optimization
 opt-level = "s"
+lto = true
 
 [profile.release]
 codegen-units = 1 # LLVM can perform better optimizations using a single thread
